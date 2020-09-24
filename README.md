@@ -14,8 +14,19 @@ De manera gratuita y sin descargar programas costosos podras optimizar tu intern
 * Realiza prueba de Ping con Google, Cloudflare o tu Router de manera rapida.
 * Ajustador del MTU para evitar la fragmentacion de paquetes.
 * Cambia la IP de manera rapida por otra de tu preferencia compactible con tu RED actual.
+* Cambia la MAC de manera veloz o restablece la MAC original de tu PC.
 * Tienes intrusos en la red? o deseas saber que equipos utilizan tu red?, Usa la utilidad para encontrar los PCs conectados a la RED domestica actual.
-* Con las herramientas de Optimizacion de TCP/IP puedes optimizar la conexion y desactivar las molestas actualizaciones de windows y otro programas.
+* Con las herramientas de Optimizacion de TCP/IP puedes optimizar la conexion al maximo sin restricciones y desactivar las molestas actualizaciones de windows y otro programas.
+
+**Cambia tu IP Como funciona?**
+
+Solo coloque un numero comprendido entre 1 a 254 y Pulsa enter
+El programa cambiara el los ultimos digito de la IP 192.168.1.yyy
+en donde yyy es el numero que desees cambiar.
+
+Ejemplo:
+Si tu IP es 192.168.1.109 y escribiste 54, la IP cambiara a 192.168.1.54
+Si tu IP es 10.10.1.187 y escribiste 49, la IP cambiara a 10.10.1.49
 
 **Descarga**
 
