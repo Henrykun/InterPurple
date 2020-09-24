@@ -20,7 +20,7 @@ De manera gratuita y sin descargar programas costosos podrás optimizar tu inter
 
 ## ¿Cambia tu IP Como funciona?
 * Solo coloque un numero comprendido entre 1 a 254 y Pulsa enter.
-* El programa cambiara el los últimos digito de la IP 192.168.1.yyy
+* El programa cambiara el los últimos digito de la IP 192.168.1.[yyy]
 * En donde yyy es el número que desees cambiar.
 
 **Ejemplo:**
