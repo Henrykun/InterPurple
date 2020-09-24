@@ -1,4 +1,7 @@
 # InterPurple
+
+![InterPurple Imagen](https://i.imgur.com/hBWNETk.png)
+
 InterPurple: Configura, Repara y Optimiza tu Internet
 
 ## Descripción
