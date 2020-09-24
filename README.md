@@ -17,6 +17,10 @@ De manera gratuita y sin descargar programas costosos podras optimizar tu intern
 * Tienes intrusos en la red? o deseas saber que equipos utilizan tu red?, Usa la utilidad para encontrar los PCs conectados a la RED domestica actual.
 * Con las herramientas de Optimizacion de TCP/IP puedes optimizar la conexion y desactivar las molestas actualizaciones de windows y otro programas.
 
+**Descarga**
+
+https://github.com/Henrykun/InterPurple/archive/master.zip
+
 **Agradecimientos**
 
 Para mi Hannachan que me motivo a programarlo para que ella pueda utilizar su internet al maximo y resolver los problemas que se le puedan presentar.
