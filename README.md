@@ -36,4 +36,4 @@ De manera gratuita y sin descargar programas costosos podrás optimizar tu inter
 
 ## Agradecimientos
 
-Para mi Hannachan que me motivo a programarlo para que ella pueda utilizar su internet al máximo y resolver los problemas que se le puedan presentar.
+Para Hannachan que me motivo a programarlo, que pueda utilizar su internet al máximo y resolver los problemas que se le puedan presentar.
