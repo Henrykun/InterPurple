@@ -152,6 +152,9 @@ ECHO.
 ECHO  [D] Desactivar Windows Update (Recomendado).
 ECHO  [A] Habilitar Windows Update (No Recomendado!!).
 ECHO.
+ECHO  [M] Desactivar prevencion DEP (Mas rapidez menos seguridad).
+ECHO  [N] Habilitar prevencion DEP (Mas seguridad menos rapidez).
+ECHO.
 ECHO  [V] Para Volver al Menu Principal.
 ECHO.
 echo %linea2%
@@ -166,6 +169,8 @@ IF /I "%choice1%"=="D" GOTO UPDATESWINOFF
 IF /I "%choice1%"=="A" GOTO UPDATESWINON
 IF /I "%choice1%"=="J" GOTO IPV6Disable
 IF /I "%choice1%"=="K" GOTO IPV6Enable
+IF /I "%choice1%"=="M" GOTO ModoDepDesactivado
+IF /I "%choice1%"=="N" GOTO ModoDepActivado
 IF /I "%choice1%"=="V" GOTO Inicio
 :: ELSE
 GOTO Menu2
@@ -990,3 +995,27 @@ for /f "usebackq" %%i in (`reg query HKLM\SYSTEM\CurrentControlSet\services\Tcpi
   )
 reg delete HKLM\SOFTWARE\Microsoft\MSMQ\Parameters /v "TCPNoDelay" /f
 GOTO:EOF
+
+:ModoDepDesactivado
+CLS
+Echo Desactivando Prevencion de ejecucion de datos (DEP)...
+bcdedit.exe /set nx AlwaysOff
+bcdedit.exe /set {current} nx AlwaysOff >NUL
+Echo. 
+ECHO  * Reinicie PC para que los cambios surtan efecto. - PRESIONA ENTER *
+ECHO.
+ECHO.
+@PAUSE
+Goto Menu2
+
+:ModoDepActivado
+CLS
+Echo Activando Prevencion de ejecucion de datos (DEP)...
+bcdedit.exe /set nx AlwaysOn
+bcdedit.exe /set {current} nx AlwaysOn >NUL
+Echo. 
+ECHO  * Reinicie PC para que los cambios surtan efecto. - PRESIONA ENTER *
+ECHO.
+ECHO.
+@PAUSE
+Goto Menu2
