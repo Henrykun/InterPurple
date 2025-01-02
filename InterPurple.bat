@@ -39,7 +39,8 @@ rem http://arbo.com.ve/programacin-batch-avanzada/
 :inicio0
 TITLE InterPurple: Configura, Repara y Optimiza tu Internet [By Henry]
 echo Cargando el programa por favor espere..
-For /f "tokens=2 delims==" %%F in ('wmic nic where "NetConnectionStatus=2 and AdapterTypeId=0" get  NetConnectionID /format:list') do set interface=%%F
+REM Obtener la interfaz de red evitando VirtualBox Host-Only Network
+For /f "tokens=2 delims==" %%F in ('wmic nic where "NetConnectionStatus=2 and AdapterTypeId=0 and NOT Description like '%%VirtualBox%%'" get NetConnectionID /format:list') do set interface=%%F
 cls
 echo Cargando el programa por favor espere....
 SET "PuertaY=192.168.1.1"
@@ -87,6 +88,7 @@ echo  [O]	Restablecer MAC Predeterminada(Original) de tu Equipo.
 echo  [F]	Restablecer Configuracion de Fabrica de Internet. 
 echo  [Nro]	Usar IP Manual %PuertaX%.[  ] (Solo coloque el Valor de [  ]).
 echo  [S]	Usar IP Automatica	^|^|	 [N] Usar DNS de Fabrica.
+echo  [J]	Habilitar Proxy (%Puerta%:3128) ^|^| [K] Deshabilitar Proxy.
 echo  [D]	Usar DNS de Google + CloudFlare + Comodo Secure.
 echo  [H]	Herramientas de Optimizacion de Internet TCP/IP.
 echo  [U]	Auto-ajustar MTU. ^|^|  [W] Restaurar MTU a 1500(Por defecto).
@@ -116,6 +118,8 @@ IF /I "%var%"=="T" GOTO WifiPropiedades
 IF /I "%var%"=="U" Call :CalcularMTU
 IF /I "%var%"=="W" SET MTU=1500 & Call :MTUPantalla
 IF /I "%var%"=="H" Call :Menu2
+IF /I "%var%"=="K" Call :DeshabilitarProxy
+IF /I "%var%"=="J" Call :HabilitarProxy
 IF /I "%var%"=="S" netsh interface ip set address "%interface%" dhcp >NUL 2>&1 & color 0A
 Call :MyIP
 if %var% LEQ 0 Goto Inicio
@@ -152,8 +156,8 @@ ECHO.
 ECHO  [D] Desactivar Windows Update (Recomendado).
 ECHO  [A] Habilitar Windows Update (No Recomendado!!).
 ECHO.
-ECHO  [M] Desactivar prevencion DEP (Mas rapidez menos seguridad).
-ECHO  [N] Habilitar prevencion DEP (Mas seguridad menos rapidez).
+ECHO  [M] Desactivar Mitigaciones de Windows (Mas rapidez menos seguridad).
+ECHO  [N] Habilitar Mitigaciones de Windows (Mas seguridad menos rapidez).
 ECHO.
 ECHO  [V] Para Volver al Menu Principal.
 ECHO.
@@ -209,12 +213,24 @@ for /f "delims=: tokens=2" %%n in ('netsh wlan show interface name="%interface%"
 IF NOT "%Network%"=="" set "Network=%Network:~1%"
 IF "%Network%"=="" SET "Network=No Disponible"
 SET "MACMUestra="
-for /f "usebackq tokens=3 delims=," %%a in (`getmac /fo csv /v ^| find "%interface%"`) do set MACMUestra=%%~a
+for /f "usebackq tokens=3 delims=," %%a in (`getmac /fo csv /v ^| find /v "VirtualBox" ^| find "%interface%"`) do set MACMUestra=%%~a
 IF "%MACMUestra%"=="" SET "MACMUestra=No Disponible"
 SET "IP="
 SET "Puerta="
 SET "dnsip="
-For /f "tokens=1-4 delims={}, " %%A in ('wmic nicconfig get ipaddress') do for /f %%A in ("%%~A") do set "IP=%%~B"
+SET "IP="
+REM Excluir direcciones IP 169.254 y tomar la primera IP válida
+For /f "skip=1 tokens=1-4 delims={}, " %%A in ('wmic nicconfig get ipaddress') do (
+  for /f %%B in ("%%~A") do (
+    echo %%B | findstr /v "169.254" >nul
+    if not errorlevel 1 (
+      set "IP=%%~B"
+      goto EndIP
+    )
+  )
+)
+:EndIP
+
 For /f "skip=1 delims={}, " %%A in ('wmic nicconfig get defaultIPgateway') do for /f "tokens=1" %%B in ("%%~A") do set "Puerta=%%~B"
 For /F "Tokens=*" %%a in ('wmic nicconfig get dnsserversearchorder ^|find ","') do set dnsip=%%a
 for /f "tokens=1-5 delims=: " %%d in ("%IP%") do SET "IPV6var=%%d"
@@ -647,6 +663,7 @@ reg add "HKLM\SOFTWARE\Wow6432Node\JavaSoft\Java Update\Policy" /V EnableJavaUpd
 CALL :FirefoxPrefOFF
 taskkill /IM jucheck.exe /F
 taskkill /IM juscheck.exe /F
+sc config MozillaMaintenance start=disabled
 CLS
 ECHO  * SE HAN DESACTIVADO CORRECTAMENTE LAS ACTUALIZACIONES - PRESIONA ENTER *
 ECHO.
@@ -670,6 +687,7 @@ sc start AdobeARMservice
 reg add "HKLM\SOFTWARE\JavaSoft\Java Update\Policy" /V EnableJavaUpdate /T REG_DWORD /D 1 /F >NUL 2>&1
 reg add "HKLM\SOFTWARE\Wow6432Node\JavaSoft\Java Update\Policy" /V EnableJavaUpdate /T REG_DWORD /D 1 /F >NUL 2>&1
 CALL :FirefoxPrefON
+sc config MozillaMaintenance start=auto
 CLS
 ECHO  * SE HAN ACTIVADO CORRECTAMENTE LAS ACTUALIZACIONES - PRESIONA ENTER *
 ECHO.
@@ -998,9 +1016,17 @@ GOTO:EOF
 
 :ModoDepDesactivado
 CLS
-Echo Desactivando Prevencion de ejecucion de datos (DEP)...
+Echo Desactivando todas las mitigaciones...
 bcdedit.exe /set nx AlwaysOff
-bcdedit.exe /set {current} nx AlwaysOff >NUL
+bcdedit.exe /set {current} nx AlwaysOff
+bcdedit /deletevalue numproc
+bcdedit /deletevalue {current} numproc
+bcdedit /deletevalue useplatformclock
+bcdedit /deletevalue {current} useplatformclock
+bcdedit /deletevalue tscsyncpolicy
+bcdedit /deletevalue {current} tscsyncpolicy
+bcdedit /deletevalue vsmlaunchtype
+bcdedit /deletevalue {current} vsmlaunchtype
 Echo. 
 ECHO  * Reinicie PC para que los cambios surtan efecto. - PRESIONA ENTER *
 ECHO.
@@ -1010,12 +1036,31 @@ Goto Menu2
 
 :ModoDepActivado
 CLS
-Echo Activando Prevencion de ejecucion de datos (DEP)...
+Echo Activando todas las mitigaciones...
 bcdedit.exe /set nx AlwaysOn
-bcdedit.exe /set {current} nx AlwaysOn >NUL
+bcdedit.exe /set {current} nx AlwaysOn
+bcdedit /set useplatformclock on
+bcdedit /set {current} useplatformclock on
+bcdedit /set tscsyncpolicy Enhanced
+bcdedit /set {current} tscsyncpolicy Enhanced
+bcdedit /set vsmlaunchtype auto
+bcdedit /set {current} vsmlaunchtype auto
 Echo. 
 ECHO  * Reinicie PC para que los cambios surtan efecto. - PRESIONA ENTER *
 ECHO.
 ECHO.
 @PAUSE
 Goto Menu2
+
+:HabilitarProxy
+CLS
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyServer /t REG_SZ /d %Puerta%:3128 /f >NUL
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /f /v ProxyEnable /t REG_DWORD /d 0x1 >NUL
+gpupdate /force
+GOTO:EOF
+
+:DeshabilitarProxy
+CLS
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f
+gpupdate /force
+GOTO:EOF
