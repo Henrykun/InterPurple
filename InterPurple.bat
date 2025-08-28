@@ -40,7 +40,7 @@ rem http://arbo.com.ve/programacin-batch-avanzada/
 TITLE InterPurple: Configura, Repara y Optimiza tu Internet [By Henry]
 echo Cargando el programa por favor espere..
 REM Obtener la interfaz de red evitando VirtualBox Host-Only Network
-For /f "tokens=2 delims==" %%F in ('wmic nic where "NetConnectionStatus=2 and AdapterTypeId=0 and NOT Description like '%%VirtualBox%%'" get NetConnectionID /format:list') do set interface=%%F
+For /f "tokens=2 delims==" %%F in ('wmic nic where "NetConnectionStatus=2 and (AdapterTypeId=0 or AdapterTypeId=9) and NOT Description like '%%VirtualBox%%' and NOT Description like '%%Vmware%%'" get NetConnectionID /format:list') do set interface=%%F
 cls
 echo Cargando el programa por favor espere....
 SET "PuertaY=192.168.1.1"
@@ -75,7 +75,13 @@ if "%sininternet%"=="169.254" (echo %linea%
 echo  Sin Internet!!! Presione A para actualizar informacion O R para reparar Conexion
 )
 echo %linea%
-echo  Conectado al Wi-FI: %Network% ^| Tu MAC: %MACMUestra%
+for /f "tokens=2 delims==" %%a in ('wmic nic where "NetConnectionID='%interface%'" get AdapterTypeID /format:list') do set "AdapterType=%%a"
+
+if "%Network%"=="No Disponible" (
+    echo  Conectado por Ethernet: %interface% ^| Tu MAC: %MACMUestra%
+) else (
+    echo  Conectado al Wi-FI: %Network% ^| Tu MAC: %MACMUestra%
+)
 echo %linea%
 echo  [B]	Detectar IPs Libres para usar con %PuertaX%.[  ].
 echo  [R]	Reparar la conexion a Internet.
@@ -122,6 +128,7 @@ IF /I "%var%"=="K" Call :DeshabilitarProxy
 IF /I "%var%"=="J" Call :HabilitarProxy
 IF /I "%var%"=="S" netsh interface ip set address "%interface%" dhcp >NUL 2>&1 & color 0A
 Call :MyIP
+echo %var%| findstr /r "^[0-9][0-9]*$" >nul || goto Inicio
 if %var% LEQ 0 Goto Inicio
 if %var% LSS 256 Call :CambiaIP
 Goto Inicio
@@ -213,40 +220,36 @@ for /f "delims=: tokens=2" %%n in ('netsh wlan show interface name="%interface%"
 IF NOT "%Network%"=="" set "Network=%Network:~1%"
 IF "%Network%"=="" SET "Network=No Disponible"
 SET "MACMUestra="
-for /f "usebackq tokens=3 delims=," %%a in (`getmac /fo csv /v ^| find /v "VirtualBox" ^| find "%interface%"`) do set MACMUestra=%%~a
+for /f "usebackq tokens=3 delims=," %%a in (`getmac /fo csv /v ^| find /v "VirtualBox" ^| find /v "VMware" ^| find "%interface%"`) do set MACMUestra=%%~a
 IF "%MACMUestra%"=="" SET "MACMUestra=No Disponible"
 SET "IP="
 SET "Puerta="
 SET "dnsip="
-SET "IP="
-REM Excluir direcciones IP 169.254 y tomar la primera IP válida
-For /f "skip=1 tokens=1-4 delims={}, " %%A in ('wmic nicconfig get ipaddress') do (
-  for /f %%B in ("%%~A") do (
-    echo %%B | findstr /v "169.254" >nul
-    if not errorlevel 1 (
-      set "IP=%%~B"
-      goto EndIP
+SET "Submascara="
+REM --- Obtener IP actual IPv4 ---
+for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /i "IPv4 Address Dirección IPv4"') do (
+    for /f "tokens=* delims= " %%B in ("%%A") do (
+        echo %%B | findstr /v "169.254" >nul
+        if not errorlevel 1 (
+            set "IP=%%B"
+            goto EndIP
+        )
     )
-  )
 )
+set "IP=No Disponible"
 :EndIP
-
+For /f "skip=1 tokens=2 delims={}=, " %%A in ('wmic nicconfig where "IPEnabled=True" get IPSubnet /format:list') do set "Submascara=%%A"
 For /f "skip=1 delims={}, " %%A in ('wmic nicconfig get defaultIPgateway') do for /f "tokens=1" %%B in ("%%~A") do set "Puerta=%%~B"
-For /F "Tokens=*" %%a in ('wmic nicconfig get dnsserversearchorder ^|find ","') do set dnsip=%%a
-for /f "tokens=1-5 delims=: " %%d in ("%IP%") do SET "IPV6var=%%d"
+REM Obtener el DNS server (maneja uno o más servidores DNS)
+For /f "tokens=2 delims=," %%A in ('wmic nicconfig where "IPEnabled=True" get DNSServerSearchOrder /format:csv ^| findstr /v "Node,DNSServerSearchOrder"') do (
+    for /f "tokens=1 delims={,}" %%B in ("%%A") do (
+        set "dnsip=%%~B"
+        goto EndDNS
+    )
+)
+:EndDNS
 if "%puerta%"=="" SET "puerta=No Disponible"
-if "%IPV6var%"=="fe80" Goto MyIP2
-if "%IP%"=="" Goto MyIP2
-GOTO:EOF
-
-:MyIP2
-for /f "skip=1 delims={}, " %%A in ('wmic nicconfig get ipaddress') do for /f "tokens=1" %%B in ("%%~A") do set "IP=%%~B"
 if "%IP%"=="" SET "IP=No Disponible"
-if "%dnsip%"=="" Goto MyIP3
-GOTO:EOF
-
-:MyIP3
-For /f "skip=1 delims={}, " %%A in ('wmic nicconfig get dnsserversearchorder') do for /f "tokens=1" %%B in ("%%~A") do set "dnsip=%%~B"
 if "%dnsip%"=="" SET "dnsip=No Disponible"
 GOTO:EOF
 
@@ -296,7 +299,7 @@ Echo La IP Seleccionada esta en uso!!! Elija una diferente
 Echo Presione una tecla para continuar...
 Pause > NUL
 GOTO:EOF)
-netsh interface ip set address "%interface%" static %PuertaX%.%var% 255.255.255.0 %PuertaY% >NUL 2>&1
+netsh interface ip set address "%interface%" static %PuertaX%.%var% %Submascara% %PuertaY% >NUL 2>&1
 netsh interface ip set dns name="%interface%" static 8.8.8.8 >NUL 2>&1
 netsh interface ip add dns name="%interface%" 1.1.1.1 index=2 >NUL 2>&1
 netsh interface ip add dns name="%interface%" 8.26.56.26 index=3 >NUL 2>&1
@@ -566,17 +569,18 @@ GOTO:EOF
 GOTO:EOF
 
 :CantvDNS
-Rem quitando las comillas, espacios y llaves
+Rem Limpiar comillas, espacios y llaves
 set dnsip=%dnsip:"=%
 set dnsip=%dnsip:{=%
 set dnsip=%dnsip:}=%
-set dnsip=%dnsip:  =%
+set dnsip=%dnsip: =%
 Rem DNS de CANTV
 SET "dnsip1=200.44.32.12"
 Rem Evaluando variables
+IF "%dnsip%"=="" SET "dnsip=No Disponible"
 IF "%dnsip:~0,12%"=="%dnsip1%" SET "dnsip=%dnsip% (Cantv DNS)"
-IF NOT "%dnsip:~0,12%"=="%dnsip1%" SET "dnsip=%dnsip% (Manual)"
-Goto:EOF
+IF NOT "%dnsip:~0,12%"=="%dnsip1%" IF NOT "%dnsip%"=="No Disponible" SET "dnsip=%dnsip% (Manual)"
+GOTO:EOF
 
 :TWEAK
 netsh int tcp set heuristics disabled
